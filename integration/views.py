@@ -24,7 +24,6 @@ load_dotenv()
 
 class authorize(APIView):
     def get(self, request):
-        client_id = "MRBQ9-ZvovGTJM9rLRbFIEG7A8fMVP-GTKuro8S4XTI"
         redirect_uri = os.getenv('redirect_uri')
         scope = os.getenv('scope')
         authorization_url = (

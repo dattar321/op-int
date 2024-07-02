@@ -12,9 +12,7 @@ class OpenProjectCallbackSerializer(serializers.Serializer):
     code = serializers.CharField()
 
     def create(self, validated_data):
-        client_id = "MRBQ9-ZvovGTJM9rLRbFIEG7A8fMVP-GTKuro8S4XTI"
         redirect_uri = os.getenv('redirect_uri') 
-        client_secret = "zqV9LyvJgCRv3UCsIooEovczDOGyeXjvENq39jto10E"
         # scope = os.getenv('scope') 
         token_url = "https://bsts.openproject.com/oauth/token"
         data = {
