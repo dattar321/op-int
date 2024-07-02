@@ -2,11 +2,8 @@ import os
 import json
 from rest_framework import serializers
 import requests
-import logging
 from datetime import datetime
 from isodate import duration_isoformat, parse_duration
-
-logger = logging.getLogger(__name__)
 
 class OpenProjectAuthorizeSerializer(serializers.Serializer):
     authorization_url = serializers.CharField()
@@ -56,6 +53,83 @@ class OpenProjectTasksSerializer(serializers.Serializer):
         response = requests.get(tasks_url, headers=headers)
         return response.json()
     
+
+
+class TimeEntrySerializer(serializers.Serializer):
+    comment = serializers.CharField()
+    spentOn = serializers.DateField()
+    hours = serializers.DurationField()
+    workPackageId = serializers.IntegerField(write_only=True)
+
+    def create(self, validated_data):
+        work_package_id = validated_data.pop('workPackageId')
+        data = {
+            "comment": {
+                "raw": validated_data["comment"]
+            },
+            "spentOn": validated_data["spentOn"].isoformat(),
+            "hours": "PT{}H".format(validated_data["hours"].total_seconds() // 3600),
+            "_links": {
+                "workPackage": {
+                    "href": f"/api/v3/work_packages/{work_package_id}"
+                }
+            }
+        }
+        
+        response = requests.post('https://bsts.openproject.com/api/v3/time_entries', json=data, headers={'Authorization': 'Bearer YOUR_ACCESS_TOKEN'})
+
+        if response.status_code != 201:
+            # Log detailed error response for debugging
+            print(f"Failed to update task: {response.status_code} - {response.text}")
+            response.raise_for_status()  # Raise an error for bad responses
+        if response.status_code == 201:
+            return response.json()
+        else:
+            raise serializers.ValidationError('Failed to create time entry')
+
+# this OpenProjectUpdateTaskSerializer doesn't work 
+
+# class OpenProjectUpdateTaskSerializer(serializers.Serializer):
+#     subject = serializers.CharField(required=False)
+#     description = serializers.CharField(required=False)
+#     type_id = serializers.IntegerField(required=False)
+#     status_id = serializers.IntegerField(required=False)
+#     lock_version = serializers.IntegerField(required=False)
+
+#     def update(self, instance, validated_data, access_token):
+#         task_id = instance['id']
+#         tasks_url = f"https://bsts.openproject.com/api/v3/work_packages/{task_id}"
+#         headers = {
+#             "Authorization": f"Bearer {access_token}",
+#             "Content-Type": "application/json"
+#         }
+#         data = {
+#             "subject": validated_data.get('subject', instance['subject']),
+#             "description": {
+#                 "raw": validated_data.get('description', instance['description']['raw'])
+#             },
+#             "_links": {
+#                 "type": {
+#                     "href": f"/api/v3/types/{validated_data.get('type_id', instance['_links']['type']['href'].split('/')[-1])}"
+#                 },
+#                 "status": {
+#                     "href": f"/api/v3/statuses/{validated_data.get('status_id', instance['_links']['status']['href'].split('/')[-1])}"
+#                 }
+#             },
+#             "lockVersion": validated_data['lock_version']
+#         }
+
+#         response = requests.patch(tasks_url, json=data, headers=headers)
+#         response.raise_for_status()  # Raise an error for bad responses
+#         if response.status_code != 200:
+#             # Log detailed error response for debugging
+#             print(f"Failed to update task: {response.status_code} - {response.text}")
+#             response.raise_for_status()  # Raise an error for bad responses
+        
+#         return response.json()
+
+
+
 # class OpenProjectCreateProjectSerializer(serializers.Serializer):
 #     name = serializers.CharField()
 #     identifier = serializers.CharField()
@@ -135,45 +209,6 @@ class OpenProjectTasksSerializer(serializers.Serializer):
 #         response.raise_for_status()
 #         return response.json()
     
-class OpenProjectUpdateTaskSerializer(serializers.Serializer):
-    subject = serializers.CharField(required=False)
-    description = serializers.CharField(required=False)
-    type_id = serializers.IntegerField(required=False)
-    status_id = serializers.IntegerField(required=False)
-    lock_version = serializers.IntegerField(required=False)
-
-    def update(self, instance, validated_data, access_token):
-        task_id = instance['id']
-        tasks_url = f"https://bsts.openproject.com/api/v3/work_packages/{task_id}"
-        headers = {
-            "Authorization": f"Bearer {access_token}",
-            "Content-Type": "application/json"
-        }
-        data = {
-            "subject": validated_data.get('subject', instance['subject']),
-            "description": {
-                "raw": validated_data.get('description', instance['description']['raw'])
-            },
-            "_links": {
-                "type": {
-                    "href": f"/api/v3/types/{validated_data.get('type_id', instance['_links']['type']['href'].split('/')[-1])}"
-                },
-                "status": {
-                    "href": f"/api/v3/statuses/{validated_data.get('status_id', instance['_links']['status']['href'].split('/')[-1])}"
-                }
-            },
-            "lockVersion": validated_data['lock_version']
-        }
-
-        response = requests.patch(tasks_url, json=data, headers=headers)
-        response.raise_for_status()  # Raise an error for bad responses
-        if response.status_code != 200:
-            # Log detailed error response for debugging
-            print(f"Failed to update task: {response.status_code} - {response.text}")
-            response.raise_for_status()  # Raise an error for bad responses
-        
-        return response.json()
-
 
 # class OpenProjectUpdateTaskSerializer(serializers.Serializer):
 #     subject = serializers.CharField(required=False)
